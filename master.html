@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Prompt Architect | Master Hub by Lunabella</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        .active-scale:active { transform: scale(0.98); }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        #root:empty { display: none; }
+        @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); } 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); } }
+        .pulse-active { animation: pulse-ring 2s infinite; }
+        .gift-card { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); transition: all 0.3s ease; }
+        .gift-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4); }
+    </style>
+</head>
+<body class="bg-[#F8FAFC]">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const ENV_API_KEY = ""; 
+        const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
+
+        const IconSVG = ({ path, className, size = 20 }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {Array.isArray(path) ? path.map((p, i) => <path key={i} d={p} />) : <path d={path} />}
+            </svg>
+        );
+
+        const Icons = {
+            Sparkles: (p) => <IconSVG path="M9 3L11 9L17 11L11 13L9 19L7 13L1 11L7 9Z" {...p} />,
+            Wand: (p) => <IconSVG path="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z" {...p} />,
+            Terminal: (p) => <IconSVG path="M4 17l6-6-6-6M12 19h8" {...p} />,
+            Activity: (p) => <IconSVG path="M22 12h-4l-3 9L9 3l-3 9H2" {...p} />,
+            Loader: (p) => <IconSVG path="M21 12a9 9 0 1 1-6.219-8.56" {...p} />,
+            History: (p) => <IconSVG path="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 3v5h5 M12 7v5l4 2" {...p} />,
+            Settings: (p) => <IconSVG path="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" {...p} />,
+            Check: (p) => <IconSVG path="M20 6L9 17l-5-5" {...p} />,
+            Undo: (p) => <IconSVG path="M9 14L4 9l5-5 M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11" {...p} />,
+            Redo: (p) => <IconSVG path="M15 14l5-5-5-5 M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13" {...p} />,
+            Copy: (p) => <IconSVG path="M8 4V16H18V4H8ZM6 2H20V18H6V2ZM4 6V20H16V22H2V6H4Z" {...p} />,
+            Trash2: (p) => <IconSVG path={["M3 6h18", "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6", "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2", "M10 11v6", "M14 11v6"]} {...p} />,
+            Globe: (p) => <IconSVG path="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" {...p} />,
+            ExternalLink: (p) => <IconSVG path="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" {...p} />,
+            AlertCircle: (p) => <IconSVG path="M12 8v4M12 16h.01M22 12A10 10 0 1 1 2 12a10 10 0 0 1 20 0z" {...p} />,
+            BrainCircuit: (p) => <IconSVG path="M12 4.5a2.5 2.5 0 0 0-4.96-.46 2.5 2.5 0 0 0-1.98 3 2.5 2.5 0 0 0-1.32 4.24 3 3 0 0 0 .34 5.58 2.5 2.5 0 0 0 2.96 3.08 2.5 2.5 0 0 0 4.91.05L12 20V4.5Z" {...p} />,
+            Layers: (p) => <IconSVG path={["M12 2L2 7l10 5 10-5-10-5z", "M2 17l10 5 10-5", "M2 12l10 5 10-5"]} {...p} />,
+            Gift: (p) => <IconSVG path="M20 12V22H4V12M2 7H22V12H2V7ZM12 22V7M12 7c2.5-2.5 5-2.5 5 0s-2.5 2.5-5 0c-2.5 2.5-5 2.5-5 0s2.5-2.5 5 0z" {...p} />
+        };
+
+        const MODELS = {
+            DeepSeek: { name: 'DeepSeek V3' },
+            Gemini: { name: 'Gemini 2.5' },
+            Claude: { name: 'Claude 3.5' },
+            GPT4o: { name: 'GPT-4o' },
+            Kimi: { name: 'Kimi (Moonshot)' },
+            Doubao: { name: '豆包 (火山)' },
+            Zhipu: { name: '智谱清言' },
+            Perplexity: { name: 'Perplexity' }
+        };
+
+        const App = () => {
+            const [step, setStep] = useState('input');
+            const [userInput, setUserInput] = useState('');
+            const [selectedModels, setSelectedModels] = useState(['DeepSeek', 'Gemini']);
+            const [questions, setQuestions] = useState([]);
+            const [answers, setAnswers] = useState({});
+            const [results, setResults] = useState({});
+            
+            const [isLoading, setIsLoading] = useState(false);
+            const [isExpanding, setIsExpanding] = useState(false);
+            const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+            const [isReversing, setIsReversing] = useState(false);
+            
+            const [copiedId, setCopiedId] = useState(null);
+            const [toastMsg, setToastMsg] = useState(null);
+            const [confirmClear, setConfirmClear] = useState(false);
+            
+            const [historyStack, setHistoryStack] = useState([]);
+            const [redoStack, setRedoStack] = useState([]);
+            
+            const [expandEval, setExpandEval] = useState('');
+            const [expandFeedback, setExpandFeedback] = useState('');
+            const [healthData, setHealthData] = useState(null);
+            
+            const [dynamicOut, setDynamicOut] = useState({}); 
+            const [isProcessing, setIsProcessing] = useState({}); 
+
+            const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('LUNA_MASTER_V4_FINAL_HIST') || '[]'));
+            const [config, setConfig] = useState(() => JSON.parse(localStorage.getItem('LUNA_MASTER_V4_FINAL_CONF') || '{"mode":"openai","key":"","endpoint":"https://api.siliconflow.cn/v1/chat/completions"}'));
+            const [showSettings, setShowSettings] = useState(false);
+            const [showHistory, setShowHistory] = useState(false);
+            const isCanvasEnv = typeof __app_id !== 'undefined';
+
+            useEffect(() => { localStorage.setItem('LUNA_MASTER_V4_FINAL_CONF', JSON.stringify(config)); }, [config]);
+            useEffect(() => { localStorage.setItem('LUNA_MASTER_V4_FINAL_HIST', JSON.stringify(history)); }, [history]);
+            useEffect(() => { if (!config.key && !isCanvasEnv) setShowSettings(true); }, []);
+
+            const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 3000); };
+            
+            const saveState = (newText) => {
+                setHistoryStack(prev => [...prev, userInput]);
+                setRedoStack([]);
+                setUserInput(newText);
+            };
+
+            const handleUndo = () => {
+                if (historyStack.length === 0) return;
+                const prev = historyStack[historyStack.length - 1];
+                setRedoStack(prevRedo => [userInput, ...prevRedo]);
+                setUserInput(prev);
+                setHistoryStack(prevHistory => prevHistory.slice(0, -1));
+            };
+
+            const handleRedo = () => {
+                if (redoStack.length === 0) return;
+                const next = redoStack[0];
+                setHistoryStack(prevHistory => [...prevHistory, userInput]);
+                setUserInput(next);
+                setRedoStack(prevRedo => prevRedo.slice(1));
+            };
+
+            const callAI = async (prompt, sys = "") => {
+                const activeKey = isCanvasEnv ? ENV_API_KEY : config.key;
+                if (!activeKey && !isCanvasEnv) { setShowSettings(true); throw new Error("Key Required"); }
+                const isGemini = config.mode === 'gemini' || isCanvasEnv;
+                const url = isGemini ? `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${activeKey}` : config.endpoint;
+                const body = isGemini 
+                    ? { contents: [{ parts: [{ text: prompt }] }], systemInstruction: sys ? { parts: [{ text: sys }] } : undefined } 
+                    : { model: "deepseek-ai/DeepSeek-V3", messages: [{ role: "system", content: sys }, { role: "user", content: prompt }] };
+
+                const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(!isGemini && { 'Authorization': `Bearer ${activeKey}` }) }, body: JSON.stringify(body) });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error?.message || "API Fail");
+                return isGemini ? data.candidates[0].content.parts[0].text : data.choices[0].message.content;
+            };
+
+            const handleHealthCheck = async () => {
+                if (!userInput.trim()) return;
+                setIsCheckingHealth(true);
+                try {
+                    const res = await callAI(`对草稿进行专业评分(0-100)。返回JSON: {"score":85, "diagnosis":"结论", "suggestion":"优化建议"}\n草稿：${userInput}`);
+                    setHealthData(JSON.parse(res.replace(/`{3}json|`{3}/g, '').trim()));
+                } catch (e) { showToast("体检失败"); } finally { setIsCheckingHealth(false); }
+            };
+
+            const handleReverse = async () => {
+                if (!userInput.trim()) return;
+                setIsReversing(true);
+                try {
+                    const res = await callAI(`逆向工程。分析此成品并反推原始架构需求。直接输出文本：\n${userInput}`);
+                    saveState(res.trim());
+                    setExpandEval("✨ 逆向拆解成功");
+                } catch (e) { showToast("拆解失败"); } finally { setIsReversing(false); }
+            };
+
+            const handleMagicExpand = async (feedback = "") => {
+                if (!userInput.trim()) return;
+                setIsExpanding(true);
+                try {
+                    const prompt = feedback 
+                        ? `根据调整建议【${feedback}】，修改并扩充当前需求：${userInput}`
+                        : `将此想法扩充为包含具体背景、受众和目标的结构化段落：${userInput}`;
+                    const res = await callAI(prompt, "输出板块：1. 扩充后的内容 2. 架构师评价（20字内）");
+                    const parts = res.split(/架构师评价|评价：/);
+                    const content = parts[0].replace(/1\.|扩充后的内容/g, '').trim();
+                    const ev = parts[1] || "已完成智能扩充";
+                    saveState(content);
+                    setExpandEval(ev.replace(/[:：]/, '').trim());
+                    setExpandFeedback('');
+                } catch (e) { showToast("扩充失败"); } finally { setIsExpanding(false); }
+            };
+
+            const handleGo = async () => {
+                if (!userInput.trim()) return;
+                setIsLoading(true);
+                try {
+                    const res = await callAI(`针对此需求提2个对齐颗粒度的核心追问。输出JSON数组：["问1","问2"]\n需求：${userInput}`);
+                    setQuestions(JSON.parse(res.replace(/```json|```/g, '').trim()));
+                    setStep('ask');
+                } catch (e) { showToast("分析失败"); } finally { setIsLoading(false); }
+            };
+
+            const handleBuild = async () => {
+                setIsLoading(true); setStep('loading');
+                const nextResults = {};
+                try {
+                    const ctx = `需求：${userInput}\n细节：${JSON.stringify(answers)}`;
+                    await Promise.all(selectedModels.map(async (m) => {
+                        nextResults[m] = await callAI(ctx, `你是一个提示词架构师，为${MODELS[m].name}优化指令。格式：### 优化理由\n...\n### 最终提示词\n\`\`\`markdown\n...\n\`\`\``);
+                    }));
+                    setResults(nextResults); setDynamicOut({}); setStep('result');
+                    setHistory([{id: Date.now(), date: new Date().toLocaleString(), userInput, results: nextResults}, ...history].slice(0, 30));
+                } catch (e) { showToast(e.message); setStep('input'); } finally { setIsLoading(false); }
+            };
+
+            const extractPrompt = (c) => c.match(/### 最终提示词\s*[\s\S]*?`{3}(?:\w+)?\n?([\s\S]*?)`{3}/i)?.[1].trim() || c;
+
+            const handleProcess = async (id, originalContent, type) => {
+                const key = `${type}_${id}`;
+                setIsProcessing(prev => ({...prev, [key]: true}));
+                try {
+                    const currentPrompt = extractPrompt(dynamicOut[id]?.content || originalContent);
+                    let prompt = '';
+                    let sys = '';
+                    if (type === 'comp') prompt = `极致 Token 瘦身（不损逻辑，去废话）。直接输出瘦身后的指令：\n${currentPrompt}`;
+                    else if (type === 'tmpl') prompt = `将指令中的具体信息提取为变量（如 {{变量名}}）。直接输出模板：\n${currentPrompt}`;
+                    else if (type === 'trans') prompt = `翻译为原生英文提示词工程规范。直接输出：\n${currentPrompt}`;
+                    else if (type === 'sim') {
+                        prompt = currentPrompt;
+                        sys = "请严格遵循提示词指令执行。直接输出结果。";
+                    }
+
+                    const res = await callAI(prompt, sys);
+                    const finalRes = res.replace(/^`{3}[\s\S]*?\n/, '').replace(/`{3}$/, '').trim();
+                    
+                    let metrics = "";
+                    if (type === 'comp') {
+                        const saved = ((currentPrompt.length - finalRes.length) / currentPrompt.length * 100).toFixed(1);
+                        metrics = `已缩减 ${saved}% 长度`;
+                    }
+
+                    setDynamicOut(prev => ({...prev, [id]: { type, content: finalRes, metrics }}));
+                } catch (e) { showToast("处理失败"); } finally { setIsProcessing(prev => ({...prev, [key]: false})); }
+            };
+
+            const copy = (text, id) => {
+                const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select();
+                document.execCommand('copy'); document.body.removeChild(el); setCopiedId(id); setTimeout(() => setCopiedId(null), 2000);
+            };
+
+            return (
+                <div className="max-w-3xl mx-auto px-4 py-16 selection:bg-indigo-100 relative">
+                    {toastMsg && <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl text-xs font-black animate-in slide-in-from-top-4">{toastMsg}</div>}
+                    
+                    <header className="flex justify-between items-center mb-12">
+                        <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-2xl text-3xl font-black italic">L</div>
+                            <div>
+                                <h1 className="font-black text-2xl text-slate-800 leading-none uppercase tracking-tighter italic">Prompt Architect</h1>
+                                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                                    <span className="bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">MASTER HUB</span>
+                                    <span>by Lunabella</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={() => setShowHistory(true)} className="p-3.5 bg-white border border-slate-200 rounded-2xl active-scale text-slate-400 hover:text-indigo-600 shadow-sm transition-all"><Icons.History /></button>
+                            <button onClick={() => setShowSettings(true)} className={`p-3.5 bg-white border rounded-2xl active-scale shadow-sm transition-all ${!config.key && !isCanvasEnv ? 'pulse-active text-indigo-500 border-indigo-200' : 'border-slate-200 text-slate-400 hover:text-indigo-600'}`}><Icons.Settings /></button>
+                        </div>
+                    </header>
+
+                    {!config.key && !isCanvasEnv && (
+                        <div className="mb-8 bg-orange-50 border-2 border-orange-200 p-5 rounded-[1.5rem] flex items-center gap-4 animate-in slide-in-from-top-4 duration-500 shadow-lg shadow-orange-100/50">
+                            <Icons.AlertCircle className="text-orange-600 shrink-0" />
+                            <div className="flex-1">
+                                <div className="text-sm font-black text-orange-900 mb-0.5">尚未配置 API 密钥</div>
+                                <div className="text-xs text-orange-800 font-medium">请点击右侧设置按钮，配置您的服务商密钥以驱动工作站。</div>
+                            </div>
+                            <button onClick={() => setShowSettings(true)} className="bg-orange-600 text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-md hover:bg-orange-700 active-scale transition-colors">去配置</button>
+                        </div>
+                    )}
+
+                    {step === 'input' && (
+                        <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100 animate-in fade-in duration-500">
+                            <div className="flex flex-wrap gap-2.5 mb-8">
+                                {Object.entries(MODELS).map(([key, data]) => (
+                                    <button key={key} onClick={() => setSelectedModels(prev => prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key])} className={`px-4 py-2.5 rounded-xl border-2 text-[10px] font-black uppercase transition-all whitespace-nowrap ${selectedModels.includes(key) ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-md' : 'border-slate-50 text-slate-400 hover:bg-slate-50'}`}>
+                                        {data.name}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="relative">
+                                <textarea className={`w-full p-8 pt-12 text-base bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] focus:border-indigo-500 outline-none transition-all resize-none shadow-inner leading-relaxed ${expandEval || healthData ? 'h-72 pb-28' : 'h-52'}`} placeholder="在此输入原始想法、粘贴成品或需要优化的指令..." value={userInput} onChange={e => { setUserInput(e.target.value); setHealthData(null); }} />
+                                <div className="absolute top-5 right-6 flex gap-2 flex-wrap justify-end">
+                                    {(historyStack.length > 0 || redoStack.length > 0) && (
+                                        <div className="flex bg-white border border-slate-200 rounded-full px-2 py-1 shadow-sm mr-2">
+                                            <button onClick={handleUndo} disabled={historyStack.length===0} className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30"><Icons.Undo size={14}/></button>
+                                            <button onClick={handleRedo} disabled={redoStack.length===0} className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30"><Icons.Redo size={14}/></button>
+                                        </div>
+                                    )}
+                                    <button onClick={handleHealthCheck} className="text-[11px] font-bold text-teal-600 flex items-center gap-1.5 bg-teal-50 px-4 py-2 rounded-full border border-teal-100 shadow-sm hover:bg-teal-100">
+                                        {isCheckingHealth ? <Icons.Loader className="animate-spin" size={14}/> : <Icons.Activity size={14}/>} 体检
+                                    </button>
+                                    <button onClick={handleReverse} className="text-[11px] font-bold text-purple-600 flex items-center gap-1.5 bg-purple-50 px-4 py-2 rounded-full border border-purple-100 shadow-sm hover:bg-purple-100">
+                                        {isReversing ? <Icons.Loader className="animate-spin" size={14}/> : <Icons.Sparkles size={14}/>} 逆向拆解
+                                    </button>
+                                    <button onClick={() => handleMagicExpand()} disabled={isExpanding} className="text-[11px] font-bold text-indigo-600 flex items-center gap-1.5 bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100 shadow-sm hover:bg-indigo-100">
+                                        {isExpanding ? <Icons.Loader className="animate-spin" size={14}/> : <Icons.Wand size={14}/>} {expandEval ? '再扩充' : '魔法扩充'}
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {healthData && (
+                                <div className="mt-6 bg-teal-50/50 p-6 rounded-[2rem] flex items-start gap-5 shadow-sm border border-teal-100 animate-in slide-in-from-top-2">
+                                    <div className={`text-4xl font-black ${healthData.score >= 80 ? 'text-teal-500' : 'text-orange-400'}`}>{healthData.score}</div>
+                                    <div className="text-[13px] text-teal-900 leading-relaxed font-medium"><strong>诊断：</strong>{healthData.diagnosis}<br/><span className="text-teal-600"><strong>建议：</strong>{healthData.suggestion}</span></div>
+                                </div>
+                            )}
+
+                            {expandEval && (
+                                <div className="mt-6 bg-indigo-50/80 border border-indigo-100 p-6 rounded-[2rem] animate-in slide-in-from-top-2 duration-300 shadow-sm">
+                                    <p className="text-[13px] text-indigo-800 font-medium flex items-start gap-2 mb-4">
+                                        <Icons.Sparkles size={16} className="shrink-0 mt-0.5 text-indigo-600" />
+                                        <span className="leading-relaxed"><strong className="font-black text-indigo-900">架构师评价：</strong>{expandEval}</span>
+                                    </p>
+                                    <div className="flex gap-3">
+                                        <input type="text" value={expandFeedback} onChange={e => setExpandFeedback(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleMagicExpand(expandFeedback)} placeholder="输入微调建议..." className="flex-1 bg-white border border-indigo-200 p-4 rounded-xl text-xs focus:outline-indigo-500 shadow-inner font-medium text-slate-700" />
+                                        <button onClick={() => handleMagicExpand(expandFeedback)} disabled={!expandFeedback.trim() || isExpanding} className="bg-indigo-600 text-white px-6 py-4 rounded-xl text-xs font-black shadow-md hover:bg-indigo-700 active-scale disabled:opacity-50 transition-colors">
+                                            {isExpanding ? <Icons.Loader className="animate-spin" size={14}/> : "调整建议"}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <button onClick={handleGo} disabled={isLoading || !userInput.trim() || selectedModels.length === 0} className="w-full mt-10 bg-slate-900 text-white font-black py-6 rounded-[2.5rem] flex items-center justify-center gap-3 active-scale shadow-2xl transition-all hover:bg-indigo-600 disabled:opacity-30">
+                                {isLoading ? <Icons.Loader className="animate-spin" size={24} /> : <><Icons.Terminal size={20} /> ⚡ 开始校准并构建方案</>}
+                            </button>
+                        </div>
+                    )}
+
+                    {step === 'ask' && (
+                        <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100 animate-in slide-in-from-right duration-300">
+                            <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-widest mb-10 border-b border-slate-100 pb-4 flex items-center gap-2"><Icons.BrainCircuit size={18}/> 对齐需求颗粒度</h2>
+                            <div className="space-y-8">
+                                {questions.map((q, i) => (
+                                    <div key={i} className="space-y-3">
+                                        <label className="text-xs font-black text-slate-700 ml-1 uppercase">{q}</label>
+                                        <input type="text" className="w-full p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] text-sm focus:border-indigo-500 outline-none shadow-inner" onChange={e => setAnswers({...answers, [q]: e.target.value})} placeholder="补充细节设定..." />
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex gap-4 mt-12">
+                                <button onClick={() => setStep('input')} className="w-1/3 bg-slate-100 text-slate-500 font-black py-5 rounded-[2rem] active-scale text-xs">返回修改</button>
+                                <button onClick={handleBuild} className="w-2/3 bg-indigo-600 text-white font-black py-5 rounded-[2rem] active-scale shadow-2xl text-xs tracking-widest uppercase">生成最终架构方案</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {step === 'loading' && <div className="py-24 text-center animate-pulse"><Icons.Loader className="animate-spin text-indigo-600 mx-auto mb-4" size={40} /><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.6em]">Designing Master Architecture...</p></div>}
+
+                    {step === 'result' && (
+                        <div className="space-y-8 pb-32 animate-in fade-in zoom-in-95 duration-500">
+                            {Object.entries(results).map(([id, content]) => (
+                                <div key={id} className="bg-white rounded-[3rem] shadow-xl border border-slate-100 overflow-hidden">
+                                    <div className="bg-slate-900 px-8 py-5 flex justify-between items-center flex-wrap gap-4">
+                                        <div className="flex items-center gap-3 text-white font-black text-xs uppercase tracking-[0.2em]"><Icons.Layers size={16}/> {MODELS[id]?.name || id}</div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => copy(content, `${id}-f`)} className="text-[11px] font-black bg-white/10 text-white px-4 py-2 rounded-xl active-scale hover:bg-white/20 transition-all border border-white/10 flex items-center gap-1.5">{copiedId === `${id}-f` ? <Icons.Check size={12}/> : <Icons.Copy size={12}/>} 复制全文</button>
+                                            <button onClick={() => copy(extractPrompt(dynamicOut[id]?.content || content), `${id}-p`)} className="text-[11px] font-black bg-indigo-500 text-white px-4 py-2 rounded-xl active-scale flex items-center gap-1.5 shadow-lg">{copiedId === `${id}-p` ? <Icons.Check size={12}/> : <Icons.Copy size={12}/>} 仅指令</button>
+                                        </div>
+                                    </div>
+                                    <div className="p-10 text-[14px] text-slate-600 whitespace-pre-wrap leading-relaxed font-sans border-b bg-slate-50/30">
+                                        {dynamicOut[id] ? (
+                                            <div className="bg-white p-6 rounded-2xl border-2 border-indigo-100 shadow-sm relative">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <span className="px-3 py-1 bg-indigo-600 text-white rounded-full text-[9px] font-black uppercase tracking-widest">
+                                                        {dynamicOut[id].type === 'comp' ? 'Token 瘦身版' : dynamicOut[id].type === 'tmpl' ? '模板化结果' : dynamicOut[id].type === 'trans' ? '转英文版本' : '执行模拟中...'}
+                                                    </span>
+                                                    <button onClick={() => { const next = {...dynamicOut}; delete next[id]; setDynamicOut(next); }} className="text-[10px] font-bold text-slate-400 hover:text-red-500">重置回原版</button>
+                                                </div>
+                                                <div className="mb-2 font-medium">{dynamicOut[id].content}</div>
+                                                {dynamicOut[id].metrics && <div className="text-[10px] font-black text-teal-600 uppercase italic tracking-wider">{dynamicOut[id].metrics}</div>}
+                                            </div>
+                                        ) : content}
+                                    </div>
+                                    <div className="p-5 bg-slate-50 flex flex-wrap gap-3">
+                                        <button onClick={() => handleProcess(id, content, 'comp')} disabled={isProcessing['comp_'+id]} className="flex-1 bg-white border border-slate-200 text-teal-700 py-3 rounded-2xl font-black text-xs active-scale flex items-center justify-center gap-2">
+                                            {isProcessing['comp_'+id] ? <Icons.Loader size={14} className="animate-spin" /> : "Token 瘦身"}
+                                        </button>
+                                        <button onClick={() => handleProcess(id, content, 'tmpl')} disabled={isProcessing['tmpl_'+id]} className="flex-1 bg-white border border-slate-200 text-amber-700 py-3 rounded-2xl font-black text-xs active-scale flex items-center justify-center gap-2">
+                                            {isProcessing['tmpl_'+id] ? <Icons.Loader size={14} className="animate-spin" /> : "模板化"}
+                                        </button>
+                                        <button onClick={() => handleProcess(id, content, 'trans')} disabled={isProcessing['trans_'+id]} className="flex-1 bg-white border border-slate-200 text-emerald-700 py-3 rounded-2xl font-black text-xs active-scale flex items-center justify-center gap-2">
+                                            {isProcessing['trans_'+id] ? <Icons.Loader size={14} className="animate-spin" /> : "转英文"}
+                                        </button>
+                                        <button onClick={() => handleProcess(id, content, 'sim')} disabled={isProcessing['sim_'+id]} className="flex-1 bg-indigo-600 text-white py-3 rounded-2xl font-black text-xs active-scale shadow-md flex items-center justify-center gap-2">
+                                            {isProcessing['sim_'+id] ? <Icons.Loader size={14} className="animate-spin" /> : <><Icons.Globe size={14}/> 沙盒试飞</>}
+                                        </button>
+                                    </div>
+                                    {(dynamicOut[id]?.type === 'sim') && (
+                                        <div className="p-8 bg-white border-t border-slate-100 shadow-inner animate-in slide-in-from-top-2 relative">
+                                            <div className="flex justify-between items-center mb-4"><span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 font-bold">Simulation Output</span><button onClick={() => copy(dynamicOut[id].content, `out-${id}`)} className="text-[9px] font-black bg-white border px-3 py-1.5 rounded-lg active-scale shadow-sm">{copiedId === `out-${id}` ? "已复制" : "复制执行结果"}</button></div>
+                                            <div className="text-[14px] text-slate-700 whitespace-pre-wrap font-sans leading-relaxed" dangerouslySetInnerHTML={{ __html: window.marked.parse(dynamicOut[id].content) }}></div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                            <button onClick={() => {setStep('input'); setResults({}); setDynamicOut({});}} className="w-full py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.5em] hover:text-indigo-600 transition-colors bg-white rounded-[3rem] border-2 border-dashed border-slate-200 active-scale">New Task / 开启新任务</button>
+                        </div>
+                    )}
+
+                    {showHistory && (
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-[3rem] w-full max-w-2xl p-10 shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95">
+                                <div className="flex justify-between items-center mb-8 border-b pb-6 shrink-0"><h3 className="font-black text-xl text-slate-800 flex items-center gap-3"><Icons.History className="text-indigo-600" size={28} /> 架构历史记录</h3><div className="flex gap-4 items-center">{history.length > 0 && <button onClick={() => { if(confirmClear) { setHistory([]); setConfirmClear(false); } else { setConfirmClear(true); setTimeout(() => setConfirmClear(false), 3000); } }} className="text-[10px] font-black text-red-500 bg-red-50 px-4 py-2 rounded-full active-scale">{confirmClear ? "确认清空?" : "清空历史"}</button>}<button onClick={()=>setShowHistory(false)} className="text-slate-400 hover:text-slate-900 transition-colors"><Icons.Check size={24}/></button></div></div>
+                                <div className="overflow-y-auto flex-1 space-y-4 custom-scrollbar pr-2">{history.length === 0 ? <div className="py-20 text-center text-slate-400 font-medium italic text-sm">空空如也</div> : history.map(item => (<div key={item.id} className="border border-slate-100 rounded-[2rem] bg-slate-50 overflow-hidden shadow-sm hover:shadow-md transition-all"><div className="p-6 flex justify-between items-start cursor-pointer hover:bg-indigo-50/50" onClick={() => setUserInput(item.userInput)}><div className="flex-1 pr-4"><div className="text-[11px] font-black text-indigo-500 uppercase tracking-widest mb-2">{item.date}</div><div className="text-sm font-medium line-clamp-2 text-slate-700">{item.userInput}</div></div><div className="flex items-center gap-3 shrink-0"><button onClick={(e) => { e.stopPropagation(); setUserInput(item.userInput); setResults(item.results); setStep('result'); setShowHistory(false); setDynamicOut({}); }} className="text-[10px] font-black bg-indigo-600 text-white px-3 py-1.5 rounded-lg active-scale shadow-sm">载入方案</button><button onClick={(e) => { e.stopPropagation(); setHistory(prev => prev.filter(h => h.id !== item.id)); }} className="text-slate-400 hover:text-red-500 p-2 active-scale"><Icons.Trash2 size={16}/></button></div></div></div>))}</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showSettings && (
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-[3rem] w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 text-center relative max-h-[95vh] overflow-y-auto custom-scrollbar">
+                                <button onClick={()=>setShowSettings(false)} className="absolute top-8 right-8 text-slate-300 hover:text-slate-600 transition-colors"><Icons.Check size={24}/></button>
+                                <h3 className="font-black text-2xl mb-2 uppercase text-slate-800 tracking-tight italic decoration-indigo-500 underline underline-offset-8 decoration-4">API 设置</h3>
+                                <p className="text-[11px] font-bold text-slate-400 mb-10 tracking-[0.2em] uppercase">全局引擎配置</p>
+                                <div className="gift-card mb-10 p-6 rounded-[2rem] text-white flex flex-col items-center gap-4 relative overflow-hidden group shadow-xl shadow-indigo-100"><Icons.Gift className="absolute -bottom-2 -right-2 opacity-10 rotate-12" size={100} /><div className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest relative z-10">New User Special</div><div className="text-base font-black relative z-10 italic">注册即领 14元 (约 2000万 Token)</div><button onClick={() => window.open('https://cloud.siliconflow.cn/i/aVSKHmR1')} className="w-full bg-white text-indigo-600 font-black py-4 rounded-2xl text-sm flex items-center justify-center gap-2 active-scale shadow-lg relative z-10">点击领取免费额度 <Icons.ExternalLink size={14}/></button></div>
+                                <div className="space-y-8 text-left">
+                                    <div className="space-y-3"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">服务商切换</label><div className="flex bg-slate-100 p-1.5 rounded-2xl"><button onClick={() => setConfig({...config, mode: 'openai'})} className={`flex-1 py-3.5 text-[11px] font-black uppercase rounded-xl transition-all ${config.mode === 'openai' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>硅基流动</button><button onClick={() => setConfig({...config, mode: 'gemini'})} className={`flex-1 py-3.5 text-[11px] font-black uppercase rounded-xl transition-all ${config.mode === 'gemini' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Google Native</button></div></div>
+                                    <div className="space-y-6">
+                                        {config.mode === 'openai' && (<div className="space-y-2 animate-in fade-in"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4 italic">接口地址 (Endpoint)</label><input type="text" value={config.endpoint} onChange={e => setConfig({...config, endpoint: e.target.value})} className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] text-xs font-mono focus:border-indigo-500 outline-none shadow-inner" placeholder="https://..." /></div>)}
+                                        <div className="space-y-2 animate-in fade-in"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4 italic">API 密钥 (API Key)</label><input type="password" value={config.key} onChange={e => setConfig({...config, key: e.target.value})} className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] text-xs font-mono focus:border-indigo-500 outline-none shadow-inner" placeholder={config.mode === 'gemini' ? "在此粘贴 AIza... 开头的密钥" : "在此粘贴 sk-... 开头的密钥"} /></div>
+                                    </div>
+                                </div>
+                                <button onClick={() => { if(!config.key && !isCanvasEnv) { showToast('请配置密钥'); return; } setShowSettings(false); }} className="w-full mt-10 bg-slate-900 text-white font-black py-6 rounded-[2.5rem] active-scale shadow-2xl transition-all hover:bg-indigo-600 tracking-widest uppercase">保存配置</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
